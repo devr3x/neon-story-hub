@@ -17,6 +17,7 @@ export const Navbar = ({ isLoggedIn, onLogout, onLoginClick }: NavbarProps) => {
   const navItems = [
     { path: '/', label: 'Inicio', icon: Home },
     { path: '/blog', label: 'Blog', icon: PenTool },
+    { path: '/equipo', label: 'Equipo', icon: User },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -37,10 +38,10 @@ export const Navbar = ({ isLoggedIn, onLogout, onLoginClick }: NavbarProps) => {
               whileHover={{ scale: 1.1, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="font-display font-bold text-primary-foreground text-lg">S</span>
+              <span className="font-display font-bold text-primary-foreground text-lg">A</span>
             </motion.div>
             <span className="font-display font-bold text-xl text-primary text-neon-subtle hidden sm:block">
-              STORYBOARD
+              ADOLF GEITLER
             </span>
           </Link>
 

@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Image, Send, Loader2, Eye, Edit } from 'lucide-react';
+import { ArrowLeft, Image, Video, Send, Loader2, Eye, Edit, Upload, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Navbar } from '@/components/Navbar';
 import { LoginModal } from '@/components/LoginModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const NewPost = () => {
   const navigate = useNavigate();
@@ -15,35 +16,112 @@ const NewPost = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [title, setTitle] = useState('');
   const [excerpt, setExcerpt] = useState('');
   const [content, setContent] = useState('');
   const [coverImage, setCoverImage] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [category, setCategory] = useState('');
 
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    const savedLogin = localStorage.getItem('storyboard-login');
-    if (savedLogin) {
-      setIsLoggedIn(true);
-    } else {
-      setShowLoginModal(true);
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsLoggedIn(true);
+      } else {
+        setShowLoginModal(true);
+      }
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsLoggedIn(!!session);
+      if (!session) {
+        setShowLoginModal(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
-    if (email && password.length >= 4) {
-      localStorage.setItem('storyboard-login', 'true');
-      setIsLoggedIn(true);
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('storyboard-login');
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/');
+  };
+
+  const uploadFile = async (file: File, type: 'image' | 'video') => {
+    setIsUploading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Debes iniciar sesión para subir archivos');
+        return null;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        toast.error(`Error al subir ${type === 'image' ? 'imagen' : 'video'}`);
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(fileName);
+
+      toast.success(`${type === 'image' ? 'Imagen' : 'Video'} subido correctamente`);
+      return publicUrl;
+    } catch (error) {
+      toast.error('Error al subir archivo');
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor selecciona un archivo de imagen');
+      return;
+    }
+
+    const url = await uploadFile(file, 'image');
+    if (url) {
+      setCoverImage(url);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      toast.error('Por favor selecciona un archivo de video');
+      return;
+    }
+
+    const url = await uploadFile(file, 'video');
+    if (url) {
+      setVideoUrl(url);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,12 +134,38 @@ const NewPost = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Debes iniciar sesión');
+        return;
+      }
 
-    toast.success('¡Entrada publicada exitosamente!');
-    setIsSubmitting(false);
-    navigate('/blog');
+      const { error } = await supabase
+        .from('blog_posts')
+        .insert({
+          author_id: session.user.id,
+          title,
+          excerpt,
+          content,
+          image_url: coverImage || null,
+          video_url: videoUrl || null,
+          category,
+          published: true,
+        });
+
+      if (error) {
+        toast.error('Error al publicar la entrada');
+        return;
+      }
+
+      toast.success('¡Entrada publicada exitosamente!');
+      navigate('/blog');
+    } catch (error) {
+      toast.error('Error al publicar');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const categories = ['Anuncios', 'Diseño', 'Desarrollo', 'Retrospectiva', 'Roadmap'];
@@ -153,6 +257,13 @@ const NewPost = () => {
                     className="w-full h-64 object-cover rounded-xl mb-8"
                   />
                 )}
+                {videoUrl && (
+                  <video
+                    src={videoUrl}
+                    controls
+                    className="w-full rounded-xl mb-8"
+                  />
+                )}
                 {category && (
                   <span className="inline-block px-4 py-1 bg-primary/90 text-primary-foreground text-sm font-accent uppercase tracking-wider rounded-full mb-4">
                     {category}
@@ -205,40 +316,119 @@ const NewPost = () => {
                   />
                 </div>
 
-                {/* Category & Cover Image */}
+                {/* Category */}
+                <div className="glass-card rounded-2xl p-6 gradient-border">
+                  <label className="font-accent text-sm text-primary uppercase tracking-wider block mb-2">
+                    Categoría *
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full h-12 bg-muted/50 border-2 border-border rounded-lg px-4 text-foreground focus:border-primary focus:shadow-neon-sm transition-all font-body"
+                    required
+                  >
+                    <option value="">Selecciona una categoría</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Media uploads */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Image upload */}
                   <div className="glass-card rounded-2xl p-6 gradient-border">
                     <label className="font-accent text-sm text-primary uppercase tracking-wider block mb-2">
-                      Categoría *
+                      Imagen de Portada
                     </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full h-12 bg-muted/50 border-2 border-border rounded-lg px-4 text-foreground focus:border-primary focus:shadow-neon-sm transition-all font-body"
-                      required
-                    >
-                      <option value="">Selecciona una categoría</option>
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                    {coverImage ? (
+                      <div className="relative">
+                        <img
+                          src={coverImage}
+                          alt="Preview"
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCoverImage('')}
+                          className="absolute top-2 right-2 p-1 bg-destructive rounded-full text-destructive-foreground hover:scale-110 transition-transform"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-32 flex flex-col gap-2"
+                        onClick={() => imageInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                          <>
+                            <Image className="w-6 h-6" />
+                            <span>Subir imagen</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
 
+                  {/* Video upload */}
                   <div className="glass-card rounded-2xl p-6 gradient-border">
                     <label className="font-accent text-sm text-primary uppercase tracking-wider block mb-2">
-                      Imagen de Portada (URL)
+                      Video
                     </label>
-                    <div className="relative">
-                      <Image className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <Input
-                        value={coverImage}
-                        onChange={(e) => setCoverImage(e.target.value)}
-                        placeholder="https://..."
-                        className="pl-12"
-                      />
-                    </div>
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                    />
+                    {videoUrl ? (
+                      <div className="relative">
+                        <video
+                          src={videoUrl}
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setVideoUrl('')}
+                          className="absolute top-2 right-2 p-1 bg-destructive rounded-full text-destructive-foreground hover:scale-110 transition-transform"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-32 flex flex-col gap-2"
+                        onClick={() => videoInputRef.current?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                        ) : (
+                          <>
+                            <Video className="w-6 h-6" />
+                            <span>Subir video</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
 

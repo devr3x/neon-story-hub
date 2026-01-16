@@ -74,8 +74,8 @@ export const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
           >
-            <span className="text-foreground">STORY</span>
-            <span className="text-primary text-neon">BOARD</span>
+            <span className="text-foreground">ADOLF </span>
+            <span className="text-primary text-neon">GEITLER</span>
           </motion.h1>
 
           {/* Subtitle */}
@@ -110,15 +110,17 @@ export const HeroSection = () => {
                 Explorar Entradas
               </Button>
             </Link>
-            <Button variant="outline" size="lg">
-              Conocer al Equipo
-            </Button>
+            <Link to="/equipo">
+              <Button variant="outline" size="lg">
+                Conocer al Equipo
+              </Button>
+            </Link>
           </motion.div>
         </motion.div>
 
-        {/* Scroll indicator */}
+        {/* Scroll indicator - positioned below content, not overlapping */}
         <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="mt-16"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
@@ -126,6 +128,7 @@ export const HeroSection = () => {
           <motion.div
             animate={{ y: [0, 10, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
+            className="flex justify-center"
           >
             <ArrowDown className="w-6 h-6 text-primary" />
           </motion.div>
