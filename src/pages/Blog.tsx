@@ -8,6 +8,7 @@ import { LoginModal } from '@/components/LoginModal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { mockPosts } from '@/data/mockPosts';
+import { supabase } from '@/integrations/supabase/client';
 
 const Blog = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,24 +18,26 @@ const Blog = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
-    const savedLogin = localStorage.getItem('storyboard-login');
-    if (savedLogin) {
-      setIsLoggedIn(true);
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsLoggedIn(!!session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
-    if (email && password.length >= 4) {
-      localStorage.setItem('storyboard-login', 'true');
-      setIsLoggedIn(true);
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('storyboard-login');
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
   const categories = [...new Set(mockPosts.map((post) => post.category))];
