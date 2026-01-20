@@ -20,7 +20,7 @@ export const Footer = () => {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center shadow-neon-sm">
                 <span className="font-display font-bold text-primary-foreground text-lg">A</span>
               </div>
-              <span className="font-display font-bold text-xl text-primary">ADOLF GEITLER</span>
+              <span className="font-display font-bold text-xl text-primary">2NDO FPBGIO</span>
             </div>
             <p className="font-body text-muted-foreground text-sm">
               Documentando el viaje de nuestro proyecto, paso a paso.
@@ -88,7 +88,7 @@ export const Footer = () => {
           transition={{ delay: 0.3 }}
         >
           <p className="font-body text-sm text-muted-foreground flex items-center justify-center gap-1">
-            © {currentYear} Adolf Geitler. Hecho con
+            © {currentYear} 2NDO FPBGIO. Hecho con
             <Heart className="w-4 h-4 text-secondary fill-secondary" />
             por el equipo.
           </p>

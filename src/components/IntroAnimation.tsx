@@ -109,7 +109,7 @@ export const IntroAnimation = ({ onComplete }: IntroAnimationProps) => {
               animate={{ letterSpacing: '0.1em', opacity: 1 }}
               transition={{ duration: 1, delay: 1 }}
             >
-              ADOLF GEITLER
+              2ndo FPBGIO
             </motion.h1>
             <motion.div
               className="h-1 bg-gradient-to-r from-primary via-secondary to-accent rounded-full"

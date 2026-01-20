@@ -74,8 +74,8 @@ export const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
           >
-            <span className="text-foreground">ADOLF </span>
-            <span className="text-primary text-neon">GEITLER</span>
+            <span className="text-foreground">2NDO </span>
+            <span className="text-primary text-neon">FPGBIO</span>
           </motion.h1>
 
           {/* Subtitle */}

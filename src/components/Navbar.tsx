@@ -41,7 +41,7 @@ export const Navbar = ({ isLoggedIn, onLogout, onLoginClick }: NavbarProps) => {
               <span className="font-display font-bold text-primary-foreground text-lg">A</span>
             </motion.div>
             <span className="font-display font-bold text-xl text-primary text-neon-subtle hidden sm:block">
-              ADOLF GEITLER
+              2NDO FPBGIO
             </span>
           </Link>
 

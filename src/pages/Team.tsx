@@ -92,7 +92,7 @@ const Team = () => {
               </h1>
               
               <p className="font-body text-lg text-muted-foreground max-w-2xl mx-auto">
-                Las mentes creativas detrás de Adolf Geitler. Un equipo apasionado por la innovación y el desarrollo.
+                Las mentes creativas detrás de 2ndo de FPGBIO. Un equipo apasionado por la innovación y el desarrollo.
               </p>
             </div>
           </ScrollReveal>
