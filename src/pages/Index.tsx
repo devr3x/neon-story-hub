@@ -5,13 +5,14 @@ import { HeroSection } from '@/components/HeroSection';
 import { FeaturedPosts } from '@/components/FeaturedPosts';
 import { Footer } from '@/components/Footer';
 import { LoginModal } from '@/components/LoginModal';
-import { mockPosts } from '@/data/mockPosts';
 import { supabase } from '@/integrations/supabase/client';
+import { useBlogPosts } from '@/hooks/useBlogPosts';
 
 const Index = () => {
   const [showIntro, setShowIntro] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const { data: posts = [], isLoading } = useBlogPosts();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -49,7 +50,7 @@ const Index = () => {
       />
       <main>
         <HeroSection />
-        <FeaturedPosts posts={mockPosts} />
+        <FeaturedPosts posts={posts} isLoading={isLoading} />
       </main>
       <Footer />
       <LoginModal

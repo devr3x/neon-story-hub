@@ -7,8 +7,9 @@ import { BlogCard } from '@/components/BlogCard';
 import { LoginModal } from '@/components/LoginModal';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { mockPosts } from '@/data/mockPosts';
 import { supabase } from '@/integrations/supabase/client';
+import { useBlogPosts } from '@/hooks/useBlogPosts';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Blog = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -16,6 +17,7 @@ const Blog = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const { data: posts = [], isLoading } = useBlogPosts();
 
   useEffect(() => {
     const checkSession = async () => {
@@ -40,12 +42,12 @@ const Blog = () => {
     await supabase.auth.signOut();
   };
 
-  const categories = [...new Set(mockPosts.map((post) => post.category))];
+  const categories = [...new Set(posts.map((post) => post.category))];
 
-  const filteredPosts = mockPosts.filter((post) => {
+  const filteredPosts = posts.filter((post) => {
     const matchesSearch =
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.excerpt.toLowerCase().includes(searchQuery.toLowerCase());
+      (post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
     const matchesCategory = !selectedCategory || post.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -146,31 +148,51 @@ const Blog = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            Mostrando {filteredPosts.length} de {mockPosts.length} entradas
+            {isLoading ? 'Cargando...' : `Mostrando ${filteredPosts.length} de ${posts.length} entradas`}
           </motion.p>
 
+          {/* Loading skeleton */}
+          {isLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="glass-card rounded-xl overflow-hidden">
+                  <Skeleton className="h-48 w-full" />
+                  <div className="p-6 space-y-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Posts grid/list */}
-          <div
-            className={
-              viewMode === 'grid'
-                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-                : 'flex flex-col gap-6'
-            }
-          >
-            {filteredPosts.map((post, index) => (
-              <BlogCard key={post.id} post={post} index={index} />
-            ))}
-          </div>
+          {!isLoading && (
+            <div
+              className={
+                viewMode === 'grid'
+                  ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+                  : 'flex flex-col gap-6'
+              }
+            >
+              {filteredPosts.map((post, index) => (
+                <BlogCard key={post.id} post={post} index={index} />
+              ))}
+            </div>
+          )}
 
           {/* No results */}
-          {filteredPosts.length === 0 && (
+          {!isLoading && filteredPosts.length === 0 && (
             <motion.div
               className="text-center py-20"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
               <p className="text-muted-foreground text-lg">
-                No se encontraron entradas con esos criterios.
+                {posts.length === 0 
+                  ? 'No hay entradas publicadas todavía.' 
+                  : 'No se encontraron entradas con esos criterios.'}
               </p>
             </motion.div>
           )}

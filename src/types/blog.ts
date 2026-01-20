@@ -1,16 +1,5 @@
-export interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  coverImage: string;
-  author: string;
-  authorAvatar?: string;
-  date: string;
-  category: string;
-  tags: string[];
-  readTime: number;
-}
+// Legacy types - now using database types from useBlogPosts hook
+// Keeping User type for any remaining uses
 
 export interface User {
   id: string;
