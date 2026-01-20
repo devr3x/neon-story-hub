@@ -41,7 +41,7 @@ export const Navbar = ({ isLoggedIn, onLogout, onLoginClick }: NavbarProps) => {
               <span className="font-display font-bold text-primary-foreground text-lg">2º</span>
             </motion.div>
             <span className="font-display font-bold text-xl text-primary text-neon-subtle hidden sm:block">
-              2NDO FPBGIO
+               FPBGIO
             </span>
           </Link>
 
