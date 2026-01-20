@@ -38,7 +38,7 @@ export const Navbar = ({ isLoggedIn, onLogout, onLoginClick }: NavbarProps) => {
               whileHover={{ scale: 1.1, rotate: 5 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="font-display font-bold text-primary-foreground text-lg">A</span>
+              <span className="font-display font-bold text-primary-foreground text-lg">2º</span>
             </motion.div>
             <span className="font-display font-bold text-xl text-primary text-neon-subtle hidden sm:block">
               2NDO FPBGIO
