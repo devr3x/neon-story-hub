@@ -18,9 +18,9 @@ export const Footer = () => {
           >
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary via-accent to-secondary flex items-center justify-center shadow-neon-sm">
-                <span className="font-display font-bold text-primary-foreground text-lg">A</span>
+                <span className="font-display font-bold text-primary-foreground text-lg">2º</span>
               </div>
-              <span className="font-display font-bold text-xl text-primary">2º FPBGIO</span>
+              <span className="font-display font-bold text-xl text-primary">FPBGIO</span>
             </div>
             <p className="font-body text-muted-foreground text-sm">
               Documentando el viaje de nuestro proyecto, paso a paso.
