@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Calendar, Clock, User, Tag, Share2, Heart } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, User, Tag, Share2, Heart, Check, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
@@ -11,13 +11,16 @@ import { ScrollReveal } from '@/components/ScrollReveal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useBlogPost, useBlogPosts } from '@/hooks/useBlogPosts';
+import { useToast } from '@/hooks/use-toast';
 
 const BlogPost = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data: post, isLoading } = useBlogPost(id || '');
   const { data: allPosts = [] } = useBlogPosts();
@@ -33,10 +36,86 @@ const BlogPost = () => {
       setIsLoggedIn(!!session);
     });
 
+    // Check if post was liked before
+    if (id) {
+      const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
+      setLiked(likedPosts.includes(id));
+    }
+
     window.scrollTo(0, 0);
 
     return () => subscription.unsubscribe();
   }, [id]);
+
+  const handleLike = () => {
+    if (!id) return;
+    
+    const likedPosts = JSON.parse(localStorage.getItem('likedPosts') || '[]');
+    
+    if (liked) {
+      const updatedLikes = likedPosts.filter((postId: string) => postId !== id);
+      localStorage.setItem('likedPosts', JSON.stringify(updatedLikes));
+      setLiked(false);
+      toast({
+        title: "Has quitado tu me gusta",
+        description: "Ya no te gusta esta entrada",
+      });
+    } else {
+      likedPosts.push(id);
+      localStorage.setItem('likedPosts', JSON.stringify(likedPosts));
+      setLiked(true);
+      toast({
+        title: "¡Te gusta!",
+        description: "Has dado me gusta a esta entrada",
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: post?.title || 'Entrada del blog',
+      text: post?.excerpt || 'Mira esta entrada del blog',
+      url: shareUrl,
+    };
+
+    try {
+      // Try native share first (works on mobile and some browsers)
+      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        toast({
+          title: "¡Compartido!",
+          description: "Has compartido la entrada",
+        });
+      } else {
+        // Fallback: copy link to clipboard
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        toast({
+          title: "¡Enlace copiado!",
+          description: "El enlace ha sido copiado al portapapeles",
+        });
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch (error) {
+      // If sharing was cancelled or failed, try copying
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        toast({
+          title: "¡Enlace copiado!",
+          description: "El enlace ha sido copiado al portapapeles",
+        });
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        toast({
+          title: "Error",
+          description: "No se pudo compartir la entrada",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -241,15 +320,15 @@ const BlogPost = () => {
               <div className="flex items-center justify-between mt-8">
                 <Button
                   variant={liked ? 'neon-solid' : 'outline'}
-                  onClick={() => setLiked(!liked)}
+                  onClick={handleLike}
                 >
                   <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
                   {liked ? 'Te gusta' : 'Me gusta'}
                 </Button>
 
-                <Button variant="ghost">
-                  <Share2 className="w-5 h-5" />
-                  Compartir
+                <Button variant="ghost" onClick={handleShare}>
+                  {copied ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+                  {copied ? 'Copiado' : 'Compartir'}
                 </Button>
               </div>
             </ScrollReveal>
