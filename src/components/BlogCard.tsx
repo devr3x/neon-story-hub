@@ -1,14 +1,17 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Calendar, User, ArrowRight, Clock } from 'lucide-react';
-import { BlogPost } from '@/types/blog';
+import { BlogPostWithAuthor } from '@/hooks/useBlogPosts';
 
 interface BlogCardProps {
-  post: BlogPost;
+  post: BlogPostWithAuthor;
   index: number;
 }
 
 export const BlogCard = ({ post, index }: BlogCardProps) => {
+  // Estimate read time based on content length
+  const readTime = Math.max(1, Math.ceil(post.content.split(/\s+/).length / 200));
+
   return (
     <motion.article
       className="group relative glass-card rounded-2xl overflow-hidden gradient-border"
@@ -19,11 +22,17 @@ export const BlogCard = ({ post, index }: BlogCardProps) => {
     >
       {/* Image */}
       <div className="relative h-48 overflow-hidden">
-        <img
-          src={post.coverImage}
-          alt={post.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+        {post.image_url ? (
+          <img
+            src={post.image_url}
+            alt={post.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+            <span className="font-display text-4xl text-primary/30">{post.title.charAt(0)}</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
         
         {/* Category badge */}
@@ -38,7 +47,7 @@ export const BlogCard = ({ post, index }: BlogCardProps) => {
         <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {new Date(post.date).toLocaleDateString('es-ES', {
+            {new Date(post.created_at).toLocaleDateString('es-ES', {
               day: 'numeric',
               month: 'short',
               year: 'numeric',
@@ -46,7 +55,7 @@ export const BlogCard = ({ post, index }: BlogCardProps) => {
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {post.readTime} min
+            {readTime} min
           </span>
         </div>
 
@@ -57,17 +66,25 @@ export const BlogCard = ({ post, index }: BlogCardProps) => {
 
         {/* Excerpt */}
         <p className="font-body text-muted-foreground text-sm mb-4 line-clamp-3">
-          {post.excerpt}
+          {post.excerpt || post.content.slice(0, 150)}
         </p>
 
         {/* Author & Link */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-              <User className="w-4 h-4 text-primary-foreground" />
-            </div>
+            {post.author?.avatar_url ? (
+              <img 
+                src={post.author.avatar_url} 
+                alt={post.author.display_name}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <User className="w-4 h-4 text-primary-foreground" />
+              </div>
+            )}
             <span className="text-sm font-accent text-muted-foreground">
-              {post.author}
+              {post.author?.display_name || 'Anónimo'}
             </span>
           </div>
 

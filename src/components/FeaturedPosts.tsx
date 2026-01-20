@@ -1,15 +1,17 @@
 import { motion } from 'framer-motion';
 import { BlogCard } from './BlogCard';
-import { BlogPost } from '@/types/blog';
+import { BlogPostWithAuthor } from '@/hooks/useBlogPosts';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
+import { Skeleton } from './ui/skeleton';
 
 interface FeaturedPostsProps {
-  posts: BlogPost[];
+  posts: BlogPostWithAuthor[];
+  isLoading?: boolean;
 }
 
-export const FeaturedPosts = ({ posts }: FeaturedPostsProps) => {
+export const FeaturedPosts = ({ posts, isLoading }: FeaturedPostsProps) => {
   const featuredPosts = posts.slice(0, 3);
 
   return (
@@ -35,12 +37,44 @@ export const FeaturedPosts = ({ posts }: FeaturedPostsProps) => {
           </p>
         </motion.div>
 
+        {/* Loading skeleton */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="glass-card rounded-xl overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <div className="p-6 space-y-3">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Posts grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        {!isLoading && featuredPosts.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {featuredPosts.map((post, index) => (
             <BlogCard key={post.id} post={post} index={index} />
           ))}
-        </div>
+          </div>
+        )}
+
+        {/* No posts message */}
+        {!isLoading && featuredPosts.length === 0 && (
+          <motion.div
+            className="text-center py-12 mb-12"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-muted-foreground text-lg">
+              No hay entradas publicadas todavía. ¡Vuelve pronto!
+            </p>
+          </motion.div>
+        )}
 
         {/* View all button */}
         <motion.div

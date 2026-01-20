@@ -7,8 +7,10 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { LoginModal } from '@/components/LoginModal';
 import { Button } from '@/components/ui/button';
-import { mockPosts } from '@/data/mockPosts';
 import { ScrollReveal } from '@/components/ScrollReveal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { supabase } from '@/integrations/supabase/client';
+import { useBlogPost, useBlogPosts } from '@/hooks/useBlogPosts';
 
 const BlogPost = () => {
   const { id } = useParams();
@@ -17,29 +19,57 @@ const BlogPost = () => {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [liked, setLiked] = useState(false);
 
-  const post = mockPosts.find((p) => p.id === id);
+  const { data: post, isLoading } = useBlogPost(id || '');
+  const { data: allPosts = [] } = useBlogPosts();
 
   useEffect(() => {
-    const savedLogin = localStorage.getItem('storyboard-login');
-    if (savedLogin) {
-      setIsLoggedIn(true);
-    }
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsLoggedIn(!!session);
+    });
+
     window.scrollTo(0, 0);
+
+    return () => subscription.unsubscribe();
   }, [id]);
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
-    if (email && password.length >= 4) {
-      localStorage.setItem('storyboard-login', 'true');
-      setIsLoggedIn(true);
-      return true;
-    }
-    return false;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('storyboard-login');
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar
+          isLoggedIn={isLoggedIn}
+          onLogout={handleLogout}
+          onLoginClick={() => setShowLoginModal(true)}
+        />
+        <main className="pt-20">
+          <Skeleton className="h-[50vh] w-full" />
+          <div className="container mx-auto px-4 py-12 max-w-3xl">
+            <Skeleton className="h-8 w-32 mb-4" />
+            <Skeleton className="h-12 w-full mb-8" />
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
@@ -54,9 +84,12 @@ const BlogPost = () => {
     );
   }
 
-  const relatedPosts = mockPosts
+  const relatedPosts = allPosts
     .filter((p) => p.id !== post.id && p.category === post.category)
     .slice(0, 2);
+
+  // Estimate read time based on content length
+  const readTime = Math.max(1, Math.ceil(post.content.split(/\s+/).length / 200));
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,11 +107,15 @@ const BlogPost = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
         >
-          <img
-            src={post.coverImage}
-            alt={post.title}
-            className="w-full h-full object-cover"
-          />
+          {post.image_url ? (
+            <img
+              src={post.image_url}
+              alt={post.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
 
           {/* Back button */}
@@ -127,11 +164,19 @@ const BlogPost = () => {
               transition={{ delay: 0.4 }}
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-neon-sm">
-                  <User className="w-6 h-6 text-primary-foreground" />
-                </div>
+                {post.author?.avatar_url ? (
+                  <img 
+                    src={post.author.avatar_url} 
+                    alt={post.author.display_name}
+                    className="w-12 h-12 rounded-full object-cover shadow-neon-sm"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-neon-sm">
+                    <User className="w-6 h-6 text-primary-foreground" />
+                  </div>
+                )}
                 <div>
-                  <p className="font-accent text-foreground">{post.author}</p>
+                  <p className="font-accent text-foreground">{post.author?.display_name || 'Anónimo'}</p>
                   <p className="text-muted-foreground text-sm">Miembro del equipo</p>
                 </div>
               </div>
@@ -139,7 +184,7 @@ const BlogPost = () => {
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="w-4 h-4" />
                 <span className="text-sm">
-                  {new Date(post.date).toLocaleDateString('es-ES', {
+                  {new Date(post.created_at).toLocaleDateString('es-ES', {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',
@@ -149,9 +194,23 @@ const BlogPost = () => {
 
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Clock className="w-4 h-4" />
-                <span className="text-sm">{post.readTime} min de lectura</span>
+                <span className="text-sm">{readTime} min de lectura</span>
               </div>
             </motion.div>
+
+            {/* Video if exists */}
+            {post.video_url && (
+              <ScrollReveal>
+                <div className="mb-8 rounded-xl overflow-hidden">
+                  <video 
+                    src={post.video_url} 
+                    controls 
+                    className="w-full"
+                    poster={post.image_url || undefined}
+                  />
+                </div>
+              </ScrollReveal>
+            )}
 
             {/* Article content */}
             <ScrollReveal>
@@ -161,19 +220,21 @@ const BlogPost = () => {
             </ScrollReveal>
 
             {/* Tags */}
-            <ScrollReveal delay={0.2}>
-              <div className="flex flex-wrap items-center gap-2 mt-12 pt-8 border-t border-border">
-                <Tag className="w-4 h-4 text-muted-foreground" />
-                {post.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </ScrollReveal>
+            {post.tags && post.tags.length > 0 && (
+              <ScrollReveal delay={0.2}>
+                <div className="flex flex-wrap items-center gap-2 mt-12 pt-8 border-t border-border">
+                  <Tag className="w-4 h-4 text-muted-foreground" />
+                  {post.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
 
             {/* Actions */}
             <ScrollReveal delay={0.3}>
@@ -208,11 +269,15 @@ const BlogPost = () => {
                         className="group glass-card rounded-xl overflow-hidden hover:shadow-neon-sm transition-all"
                       >
                         <div className="h-32 overflow-hidden">
-                          <img
-                            src={relatedPost.coverImage}
-                            alt={relatedPost.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
+                          {relatedPost.image_url ? (
+                            <img
+                              src={relatedPost.image_url}
+                              alt={relatedPost.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20" />
+                          )}
                         </div>
                         <div className="p-4">
                           <h4 className="font-display text-lg font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2">
